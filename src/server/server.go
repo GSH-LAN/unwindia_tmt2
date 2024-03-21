@@ -206,6 +206,7 @@ func (s *Server) webhookHandler(ctx *gin.Context) {
 	defer body.Close()
 
 	var webhookPayload interface{}
+
 	err := json.NewDecoder(body).Decode(&webhookPayload)
 	if err != nil {
 		slog.Error("Error decoding webhook payload", "error", err)
@@ -251,15 +252,19 @@ func (s *Server) testTemplateHandler(ctx *gin.Context) {
 
 	parsedTmt2MatchTemplate, err := template.ParseTemplateForMatch(templateTextToTest, &testMatch)
 	if err != nil {
+		slog.Error("Error parsing template", "error", err)
 		ctx.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
+
+	slog.Debug("Parsed template", "parsedTmt2MatchTemplate", parsedTmt2MatchTemplate)
 
 	// try to bind parsed template to tmt2 match
 
 	var createMatchDto = tmt2_go.IMatchCreateDto{}
 	err = json.Unmarshal([]byte(parsedTmt2MatchTemplate), &createMatchDto)
 	if err != nil {
+		slog.Error("Error unmarshalling parsed template", "error", err)
 		ctx.JSON(400, gin.H{"error": err.Error()})
 		return
 	}

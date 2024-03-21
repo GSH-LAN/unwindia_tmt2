@@ -65,19 +65,19 @@ func (d DatabaseClientImpl) CreateMatch(ctx context.Context, entry *Match) (stri
 	ctx, cancel := context.WithTimeout(ctx, DefaultTimeout)
 	defer cancel()
 
-	// TTL index
-	index := mongo.IndexModel{
-		Keys:    bson.D{{"created_at", 1}},
-		Options: options.Index().SetExpireAfterSeconds(int32(d.matchExpirationTTL.Seconds())),
-	}
+	//// TTL index
+	//index := mongo.IndexModel{
+	//	Keys:    bson.D{{"created_at", 1}},
+	//	Options: options.Index().SetExpireAfterSeconds(int32(d.matchExpirationTTL.Seconds())),
+	//}
+	//
+	//_, err := d.collection.Indexes().CreateOne(ctx, index)
+	//if err != nil {
+	//	// TODO: recreate index if already existing
+	//	slog.Error("Error creating index", "Error", err)
+	//}
 
-	_, err := d.collection.Indexes().CreateOne(ctx, index)
-	if err != nil {
-		// TODO: recreate index if already existing
-		slog.Error("Error creating index", "Error", err)
-	}
-
-	err = d.collection.CreateWithCtx(ctx, entry)
+	err := d.collection.CreateWithCtx(ctx, entry)
 
 	return entry.ID.String(), err
 }
