@@ -97,10 +97,10 @@ func (w *Worker) processMatch(ctx context.Context, match *database.Match) error 
 			slog.Error("error creating tmt2 match", "Error", err)
 			return err
 		}
-		slog.Info("created tmt2 match", "Match", match.MatchID, "Response", *createMatchResponse.JSON201)
+		slog.Info("created tmt2 match", "Match", match.MatchID, "Response", *createMatchResponse)
 
 		match.JobState = models.JOB_STATE_IN_PROGRESS
-		match.TMT2MatchId = createMatchResponse.JSON201.Id
+		match.TMT2MatchId = createMatchResponse.Id
 		_, err = w.dbClient.UpdateMatch(ctx, match)
 		if err != nil {
 			slog.Error("error updating match", "Error", err)
@@ -124,8 +124,44 @@ func (w *Worker) processMatch(ctx context.Context, match *database.Match) error 
 	return nil
 }
 
-func (w *Worker) createTMT2Match(ctx context.Context, match *database.Match) (*tmt2_go.CreateMatchResponse, error) {
+func (w *Worker) createTMT2Match(ctx context.Context, match *database.Match) (*tmt2_go.IMatch, error) {
 	slog.Debug("createTMT2Match", "Match", match.MatchID)
+
+	// check if match already exists
+	existingResponse, err := w.tmt2Client.GetMatchByExternalId(ctx, match.MatchID)
+	if err != nil {
+		slog.Error("error checking for existing tmt2 match", "Error", err)
+	}
+	if existingResponse != nil {
+		slog.Debug("tmt2 match already exists", "Match", match.MatchID)
+		return &tmt2_go.IMatch{
+			CanClinch:         existingResponse.CanClinch,
+			CreatedAt:         existingResponse.CreatedAt,
+			CurrentMap:        existingResponse.CurrentMap,
+			Election:          existingResponse.Election,
+			ElectionSteps:     existingResponse.ElectionSteps,
+			GameServer:        existingResponse.GameServer,
+			Id:                existingResponse.Id,
+			IsStopped:         existingResponse.IsStopped,
+			LogSecret:         existingResponse.LogSecret,
+			Logs:              existingResponse.Logs,
+			MapPool:           existingResponse.MapPool,
+			MatchEndAction:    existingResponse.MatchEndAction,
+			MatchMaps:         existingResponse.MatchMaps,
+			Mode:              existingResponse.Mode,
+			ParseIncomingLogs: existingResponse.ParseIncomingLogs,
+			Passthrough:       existingResponse.Passthrough,
+			Players:           existingResponse.Players,
+			RconCommands:      existingResponse.RconCommands,
+			ServerPassword:    existingResponse.ServerPassword,
+			State:             existingResponse.State,
+			TeamA:             existingResponse.TeamA,
+			TeamB:             existingResponse.TeamB,
+			TmtLogAddress:     existingResponse.TmtLogAddress,
+			TmtSecret:         existingResponse.TmtSecret,
+			WebhookUrl:        existingResponse.WebhookUrl,
+		}, nil
+	}
 
 	response, err := w.tmt2Client.CreateMatch(ctx, &match.MatchInfo)
 	if err != nil {
@@ -139,7 +175,7 @@ func (w *Worker) createTMT2Match(ctx context.Context, match *database.Match) (*t
 		return nil, errors.New("error creating tmt2 match: " + response.Status())
 	}
 
-	return response, nil
+	return response.JSON201, nil
 }
 
 func (w *Worker) deleteTMT2Match(ctx context.Context, match *database.Match) error {

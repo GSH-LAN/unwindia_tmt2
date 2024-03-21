@@ -9,6 +9,7 @@ import (
 	"github.com/GSH-LAN/Unwindia_common/src/go/matchservice"
 	"github.com/GSH-LAN/Unwindia_common/src/go/template"
 	tmt2_go "github.com/GSH-LAN/Unwindia_tmt2/pkg/tmt2-go"
+	"k8s.io/utils/ptr"
 	"log/slog"
 	"net/http"
 	"time"
@@ -118,6 +119,27 @@ func (t *TMT2ClientImpl) CreateMatch(ctx context.Context, matchInfo *matchservic
 // GetMatch returns current match state from TMT2
 func (t *TMT2ClientImpl) GetMatch(ctx context.Context, matchID string) (*tmt2_go.GetMatchResponse, error) {
 	return t.tmt2Client.GetMatchWithResponse(ctx, matchID)
+}
+
+// GetMatchByExternalId returns current match state from TMT2 by external id
+func (t *TMT2ClientImpl) GetMatchByExternalId(ctx context.Context, externalID string) (*tmt2_go.IMatchResponse, error) {
+	passthrough := []string{externalID}
+
+	allmatches, err := t.tmt2Client.GetAllMatchesWithResponse(ctx, &tmt2_go.GetAllMatchesParams{
+		Passthrough: &passthrough,
+		IsLive:      ptr.To(true),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if allmatches.JSON200 == nil || len(*allmatches.JSON200) == 0 {
+		return nil, fmt.Errorf("no match found with external id %s", externalID)
+	}
+
+	matches := *allmatches.JSON200
+
+	return &matches[0], nil
 }
 
 // DeleteMatch deletes a match from TMT2
